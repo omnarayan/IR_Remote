@@ -125,6 +125,7 @@ void setup(void) {
 
 void connectToWifi() {
   int count = 0;
+  counter = 20;
   while (WiFi.status() != WL_CONNECTED) {
     drawProgressBarForWifiConnection();
     for (int val = 255; val > 0; val--) {
@@ -142,7 +143,7 @@ void connectToWifi() {
       val = val + 5;
       delay (5);
     }
-    if (count > 2 && count % 2 == 0) {
+    if (count > 10 && count % 2 == 0) {
       displayWifiDetails();
       delay(WIFI_DISPLAY_DURATION);
     }
@@ -150,8 +151,8 @@ void connectToWifi() {
     count ++ ;
     Serial.print(".");
   }
-  notifyNerve();
   timeSinceLastWifiChecked = millis();
+  notifyNerve();
 }
 
 
@@ -206,11 +207,13 @@ void displayInfo() {
   display.drawString(0, 14, SSID );
   display.drawString(0, 28, "IP - " +  WiFi.localIP().toString());
   display.drawString(0, 42, String(NERVE_SERVER_HOST) + ":" + String(NERVE_SERVER_PORT));
+  display.display();
 
 }
 
 void drawProgressBarForWifiConnection() {
   display.clear();
+  
   int progress = (counter / 5) % 100;
   // draw the progress bar
   display.drawXbm(34, 0, WiFi_Logo_width, WiFi_Logo_height, WiFi_Logo_bits);
@@ -220,6 +223,7 @@ void drawProgressBarForWifiConnection() {
   display.setTextAlignment(TEXT_ALIGN_CENTER);
   display.drawString(64, 50, String(progress) + "%");
   display.display();
+  counter  = counter + 100;
 
 }
 
@@ -363,35 +367,44 @@ void heartBeat() {
 
 void notifyNerve() {
   display.clear();
-  display.setFont(ArialMT_Plain_24);
-  display.drawString(0, 20, "conneting to nerve");
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 10, "connecting to nerve");
+  display.drawString(0, 40,String(NERVE_SERVER_HOST) + ":" + String(NERVE_SERVER_PORT) );
   display.display();
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     http.begin(nerveURL.c_str());
     int httpResponseCode = http.GET();
-    display.clear();
     if (httpResponseCode > 0) {
+//      display.clear();
       Serial.print("HTTP Response code: ");
       Serial.println(httpResponseCode);
       String payload = http.getString();
       Serial.println(payload);
       isConnectedToNerve = true;
       server.send(200, "text/plain", "conneted to nerve");
-      display.drawString(0, 20, "conneted to nerve");
+//      display.drawString(0, 20, "connected to nerve");
       timeSinceLastNerveCheck = millis();
+      display.display();
+//      delay(2000);
     }
     else {
+     
       Serial.print("Error code: ");
       Serial.println(httpResponseCode);
       isConnectedToNerve = false;
       server.send(404, "text/plain", "unable to connet to nerve");
-      display.drawString(0, 20, "unable to connet to nerve");
+//      display.drawString(0, 20, "unable to connet to nerve");
     }
     display.display();
   }else{
      server.send(404, "text/plain", "unable to connet to nerve");
      connectToWifi();
+  }
+  if (!isConnectedToNerve){
+    delay(10000);
+    notifyNerve();
   }
   
 
