@@ -151,10 +151,10 @@ void setupWifi(){
 
   pinMode(TRIGGER_PIN, INPUT);
   
-  // wm.resetSettings(); // wipe settings
+//   wm.resetSettings(); // wipe settings
 
   if(wm_nonblocking) wm.setConfigPortalBlocking(false);
-  wm.setConfigPortalTimeout(120);
+  wm.setConfigPortalTimeout(1200);
   new  (&nerve_server_host)WiFiManagerParameter("nerveServerHost", "nerve server ip", "", 40);
   wm.addParameter(&nerve_server_host);
  new  (&nerve_server_port)WiFiManagerParameter ("nerveServerPort", "nerve server port", "", 6);
@@ -193,7 +193,7 @@ void saveParamCallback(){
    nerveURL =  "http://" + getParam("nerveServerHost") + ":" + getParam("nerveServerPort") + "/neuron/v3/node?licensekey=" + getParam("licenseKey") + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress();
    Serial.println("nerveURL " + nerveURL);
    
-  notifyNerve();
+//  notifyNerve();
 }
 
 void resetConfig(){
@@ -258,7 +258,7 @@ void loop(void) {
     timeSinceLastModeSwitch = millis();
   }
   if (millis() - timeSinceLastModeSwitch > WIFI_CHECK_DURATION) {
-    connectToWifi();
+//    connectToWifi();
   }
   if (millis() - timeSinceLastModeSwitch > NERVE_CHECK_DURATION) {\
     notifyNerve();
@@ -501,7 +501,7 @@ void notifyNerve() {
     display.display();
   }else{
      server.send(404, "text/plain", "unable to connet to nerve");
-     connectToWifi();
+//     connectToWifi();
   }
   if (!isConnectedToNerve){
     delay(10000);
