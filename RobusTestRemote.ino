@@ -15,6 +15,17 @@
 #define ARDUINOJSON_USE_LONG_LONG 1
 #include <ArduinoJson.h>
 
+
+// wifimanager can run in a blocking mode or a non blocking mode
+// Be sure to know how to process loops with no delay() if using non blocking
+bool wm_nonblocking = false; // change to true to use non blocking
+#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
+#define TRIGGER_PIN 0
+WiFiManager wm; 
+WiFiManagerParameter nerve_server_host;
+WiFiManagerParameter nerve_server_port;
+WiFiManagerParameter license_key;
+
 //display
 #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
 #include "images.h"
@@ -61,8 +72,11 @@ IRrecv irrecv(kRecvPin, kCaptureBufferSize, kTimeout, false);
 decode_results results;
 
 //const String ssid = "izingawireless_2.4G";
-const char* password = SSID_PASSWPRD;
-const String nerveURL =  "http://" + String(NERVE_SERVER_HOST) + ":" + String(NERVE_SERVER_PORT) + "/neuron/v3/node?licensekey=" + String(LICENSE_KEY) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress();
+char* password = SSID_PASSWPRD;
+String nerveURL =  "http://" + String(NERVE_SERVER_HOST) + ":" + String(NERVE_SERVER_PORT) + "/neuron/v3/node?licensekey=" + String(LICENSE_KEY) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress();
+String nerveServerHost = "";
+String nerveServerPORT = "";
+String licenseKey = "";
 bool isConnectedToNerve = false;
 
 ESP8266WebServer server(PORT);
@@ -77,9 +91,11 @@ long timeSinceLastNerveCheck = 0;
 
 
 void setup(void) {
+
   pinMode(Led_Red, OUTPUT);
   pinMode(Led_Green, OUTPUT);
   pinMode(Led_Blue, OUTPUT);
+  pinMode(TRIGGER_PIN, INPUT_PULLUP);
   irrecv.enableIRIn();  // Start up the IR receiver.
   irsend.begin();       // Start up the IR sender.
   // Initialising the UI will init the display too.
@@ -90,11 +106,12 @@ void setup(void) {
 
   digitalWrite(BUILTIN_LED, HIGH);
   Serial.begin(115200);
-  WiFi.begin(SSID, password);
+  setupWifi();
+//  WiFi.begin(SSID, password);
   Serial.println("");
 
   // Wait for connection
-  connectToWifi();
+//  connectToWifi();
 
 
   Serial.println("");
@@ -114,12 +131,74 @@ void setup(void) {
   server.on("/info", heartBeat);
   server.on("/v2/heartbeat", heartBeat);
   server.on("/record", handleRecord);
+  server.on("/reset", resetConfig);
+  
   server.onNotFound(handleNotFound);
 
 
   server.begin();
   setGreen();
   Serial.println("HTTP Server Started");
+}
+
+// setup wifi
+void setupWifi(){
+  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP  
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);  
+  delay(3000);
+  Serial.println("\n Starting");
+
+  pinMode(TRIGGER_PIN, INPUT);
+  
+  // wm.resetSettings(); // wipe settings
+
+  if(wm_nonblocking) wm.setConfigPortalBlocking(false);
+  wm.setConfigPortalTimeout(120);
+  new  (&nerve_server_host)WiFiManagerParameter("nerveServerHost", "nerve server ip", "", 40);
+  wm.addParameter(&nerve_server_host);
+ new  (&nerve_server_port)WiFiManagerParameter ("nerveServerPort", "nerve server port", "", 6);
+  wm.addParameter(&nerve_server_port);
+  new (&license_key)WiFiManagerParameter ("licenseKey", "License Key", "", 40);
+  wm.addParameter(&license_key);
+  wm.setSaveParamsCallback(saveParamCallback);
+   bool res;
+   displayWifiConfig();
+   res = wm.autoConnect(AP_NAME, AP_PASSWORD);
+   if(!res) {
+    Serial.println("Failed to connect or hit timeout");
+    ESP.restart();
+  } 
+  else {
+    notifyNerve();
+    //if you get here you have connected to the WiFi    
+    Serial.println("connected...yeey :)");
+  }
+
+  
+}
+
+String getParam(String name){
+  //read parameter from server, for customhmtl input
+  String value;
+  if(wm.server->hasArg(name)) {
+    value = wm.server->arg(name);
+  }
+  return value;
+}
+
+void saveParamCallback(){
+  Serial.println("[CALLBACK] saveParamCallback fired");
+  Serial.println("PARAM customfieldid = " + getParam("nerveServerHost"));
+   nerveURL =  "http://" + getParam("nerveServerHost") + ":" + getParam("nerveServerPort") + "/neuron/v3/node?licensekey=" + getParam("licenseKey") + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress();
+   Serial.println("nerveURL " + nerveURL);
+   
+  notifyNerve();
+}
+
+void resetConfig(){
+  server.send(200, "text/json", "sent remote command");
+  wm.resetSettings();
 }
 
 
@@ -161,6 +240,13 @@ int displayModeLength = (sizeof(displayInfoMode) / sizeof(Display));
 
 void loop(void) {
   display.clear();
+   if ( digitalRead(TRIGGER_PIN) == LOW) {
+   
+    //reset settings - for testing
+    wm.resetSettings();
+  
+    setupWifi();
+  }
   displayInfoMode[displayMode]();
   digitalWrite(BUILTIN_LED, HIGH);
   setGreen();
@@ -179,6 +265,7 @@ void loop(void) {
 //    timeSinceLastNerveCheck = millis();
   }
   display.display();
+ 
 
 }
 
@@ -198,6 +285,20 @@ void displayWifiDetails() {
   display.display();
 
 }
+
+
+void displayWifiConfig() {
+  display.clear();
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(0, 0, "Connect to bellow WIFI  ");
+  display.drawString(0, 14, "AP - " + String(AP_NAME ));
+  display.drawString(0, 28, "Password - " + String(AP_PASSWORD));
+  display.display();
+
+}
+
+
 
 void displayInfo() {
   display.clear();
