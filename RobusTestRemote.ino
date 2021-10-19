@@ -102,15 +102,15 @@ void setup(void) {
   Serial.begin(115200);
   Serial.println("We are starting here ");
 
-//  SPIFFS.format();
-//  wm.resetSettings();
+//    SPIFFS.format();
+//    wm.resetSettings();
   pinMode(Relay_01, OUTPUT);
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
     if (SPIFFS.exists("/nerve_config.json")) {
       //file exists, reading and loading
       Serial.println("reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
+      File configFile = SPIFFS.open("/nerve_config.json", "r");
       if (configFile) {
         Serial.println("opened config file");
         size_t size = configFile.size();
@@ -149,9 +149,11 @@ void setup(void) {
         }
         configFile.close();
       }
-    }
-    else {
 
+      else {
+        Serial.println("unable to read file");
+      }
+    } else {
       Serial.println("file not found");
 
       File configFile = SPIFFS.open("/nerve_config.json", "w");
@@ -192,7 +194,7 @@ void setup(void) {
     Serial.println("MDNS Responder Started");
   }
   //  nerveURL =  "http://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
-
+    notifyNerve();
   server.on("/", heartBeat);
   server.on("/test", handleTest);
   server.on("/notifynerve", notifyNerve);
@@ -249,7 +251,7 @@ void setupWifi() {
     ESP.restart();
   }
   else {
-    //    notifyNerve();
+      
 
     //if you get here you have connected to the WiFi
     Serial.println("connected...yeey :)");
@@ -271,6 +273,7 @@ void saveParamCallback() {
   Serial.println("[CALLBACK] saveParamCallback fired");
   Serial.println("PARAM customfieldid = " + getParam("nerveServerHost"));
   nerveURL =  "http://" + getParam("nerveServerHost") + ":" + getParam("nerveServerPort") + "/neuron/v3/node?licensekey=" + getParam("licenseKey") + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
+  nerveHostNPort = getParam("nerveServerHost") + ":" + getParam("nerveServerPort") ;
   Serial.println("nerveURL " + nerveURL);
   //  strcpy(nerveServerHost, nerve_server_host.getValue());
   //  strcpy(nerveServerPort, nerve_server_port.getValue());
@@ -312,8 +315,9 @@ void saveParamCallback() {
   }
 
   Serial.println("nerveURL " + nerveURL);
-
-  //  notifyNerve();
+  
+    timeSinceLastWifiChecked = millis();
+    notifyNerve();
 }
 
 void relayOn() {
@@ -399,9 +403,9 @@ void loop(void) {
     //    connectToWifi();
   }
   if (millis() - timeSinceLastModeSwitch > NERVE_CHECK_DURATION) {
-    \
+    
     notifyNerve();
-    //    timeSinceLastNerveCheck = millis();
+    timeSinceLastNerveCheck = millis();
   }
   display.display();
 
@@ -647,10 +651,11 @@ void notifyNerve() {
     server.send(404, "text/plain", "unable to connet to nerve");
     //     connectToWifi();
   }
-  if (!isConnectedToNerve) {
-    delay(10000);
-    notifyNerve();
-  }
+//  if (!isConnectedToNerve) {
+//   
+//    notifyNerve();
+//    delay(10000);
+//  }
 
 
 }
