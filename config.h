@@ -13,4 +13,4 @@
 #define WIFI_CHECK_DURATION 300000
 #define NERVE_CHECK_DURATION 120000
 #define AP_NAME "robustest_esp8266"
-#define AP_PASSWORD "!z1ng@$OfT"
+#define AP_PASSWORD "!z!ng@$0fT"
