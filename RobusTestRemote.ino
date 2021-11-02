@@ -33,6 +33,7 @@ bool shouldSaveConfig = true;
 
 //display
 #include "SSD1306Wire.h"        // legacy: #include "SSD1306.h"
+#include "SH1106Wire.h"
 #include "images.h"
 #include "config.h"
 typedef void (*Display)(void);
@@ -69,7 +70,7 @@ const uint16_t kFrequency = 38000;  // in Hz. e.g. 38kHz.
 
 
 
-SSD1306Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
+SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
 // The IR transmitter.
 IRsend irsend(kIrLedPin);
 // The IR receiver.
@@ -97,13 +98,14 @@ long timeSinceLastWifiChecked = 0;
 long timeSinceLastNerveCheck = 0;
 
 
+WiFiClient wifiClient;
 void setup(void) {
 
   Serial.begin(115200);
   Serial.println("We are starting here ");
 
-//    SPIFFS.format();
-//    wm.resetSettings();
+  //    SPIFFS.format();
+  //    wm.resetSettings();
   pinMode(Relay_01, OUTPUT);
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
@@ -194,7 +196,7 @@ void setup(void) {
     Serial.println("MDNS Responder Started");
   }
   //  nerveURL =  "http://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
-    notifyNerve();
+  notifyNerve();
   server.on("/", heartBeat);
   server.on("/test", handleTest);
   server.on("/notifynerve", notifyNerve);
@@ -251,7 +253,7 @@ void setupWifi() {
     ESP.restart();
   }
   else {
-      
+
 
     //if you get here you have connected to the WiFi
     Serial.println("connected...yeey :)");
@@ -315,9 +317,9 @@ void saveParamCallback() {
   }
 
   Serial.println("nerveURL " + nerveURL);
-  
-    timeSinceLastWifiChecked = millis();
-    notifyNerve();
+
+  timeSinceLastWifiChecked = millis();
+  notifyNerve();
 }
 
 void relayOn() {
@@ -376,7 +378,7 @@ void connectToWifi() {
 }
 
 
-Display displayInfoMode[] = {   displayInfo, drawIcon};
+Display displayInfoMode[] = { displayInfo, drawIcon, drawChargingAnimation};
 int displayModeLength = (sizeof(displayInfoMode) / sizeof(Display));
 
 void loop(void) {
@@ -403,7 +405,7 @@ void loop(void) {
     //    connectToWifi();
   }
   if (millis() - timeSinceLastModeSwitch > NERVE_CHECK_DURATION) {
-    
+
     notifyNerve();
     timeSinceLastNerveCheck = millis();
   }
@@ -415,6 +417,35 @@ void loop(void) {
 void drawIcon() {
   display.clear();
   display.drawXbm(0, 15, robusTestIconWidth, robusTestIconHeight, robusTestIconBits);
+}
+
+void drawChargingAnimation() {
+
+  uint8_t width;
+
+  display.clear();
+  
+  display.drawXbm(0, 0, 128, 64, battery_bitmap);
+  display.display();
+  if (digitalRead(Relay_01) == LOW){
+    for (int i = 0; i < 65; i++) {
+      //  digitalRead(Relay_01)
+      width = CHARGE_AREA_START_X + i;
+      display.drawRect(CHARGE_AREA_START_X, CHARGE_AREA_START_Y, (width), CHARGE_AREA_HEIGHT);
+
+      display.fillRect(CHARGE_AREA_START_X, CHARGE_AREA_START_Y, (width), CHARGE_AREA_HEIGHT);
+      //   display.drawBox(CHARGE_AREA_START_X, CHARGE_AREA_START_Y, width, CHARGE_AREA_HEIGHT);
+      delay(30);
+      display.drawString(40, 50, "Charging");
+      display.display();
+
+    }
+  } else {
+    display.drawString(30, 50, "Not Charging");
+    display.display();
+  }
+
+
 }
 
 
@@ -623,7 +654,7 @@ void notifyNerve() {
   display.display();
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(nerveURL.c_str());
+    http.begin(wifiClient, nerveURL.c_str());
     int httpResponseCode = http.GET();
     if (httpResponseCode > 0) {
       //      display.clear();
@@ -651,11 +682,11 @@ void notifyNerve() {
     server.send(404, "text/plain", "unable to connet to nerve");
     //     connectToWifi();
   }
-//  if (!isConnectedToNerve) {
-//   
-//    notifyNerve();
-//    delay(10000);
-//  }
+  //  if (!isConnectedToNerve) {
+  //
+  //    notifyNerve();
+  //    delay(10000);
+  //  }
 
 
 }
