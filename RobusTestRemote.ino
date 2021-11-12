@@ -69,6 +69,9 @@ const uint8_t kTimeout = 50;  // Milli-Seconds
 const uint16_t kFrequency = 38000;  // in Hz. e.g. 38kHz.
 
 
+//D1 -SCL
+//D2 - SDA
+
 
 SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
 // The IR transmitter.
@@ -104,9 +107,9 @@ void setup(void) {
   Serial.begin(115200);
   Serial.println("We are starting here ");
 
-  //    SPIFFS.format();
-  //    wm.resetSettings();
+//  SPIFFS.format();
   pinMode(Relay_01, OUTPUT);
+  digitalWrite(Relay_01, HIGH);
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
     if (SPIFFS.exists("/nerve_config.json")) {
@@ -120,7 +123,8 @@ void setup(void) {
         std::unique_ptr<char[]> buf(new char[size]);
 
         configFile.readBytes(buf.get(), size);
-        Serial.println("file Data - " + String( buf.get()));
+        if (size >0){
+        Serial.println("file Data size - " + String(size));
 
         //#ifdef ARDUINOJSON_VERSION_MAJOR >= 6
         DynamicJsonDocument json(1024);
@@ -146,6 +150,7 @@ void setup(void) {
           nerveURL =  "http://" + String(host1) + ":" + String(port1) + "/neuron/v3/node?licensekey=" + String(license1) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
           nerveHostNPort = String(host1) + ":" + String(port1);
           Serial.println("file nerveURL " + nerveURL);
+        }
         } else {
           Serial.println("failed to load json config");
         }
@@ -168,7 +173,7 @@ void setup(void) {
   pinMode(Led_Red, OUTPUT);
   pinMode(Led_Green, OUTPUT);
   pinMode(Led_Blue, OUTPUT);
-  pinMode(TRIGGER_PIN, INPUT_PULLUP);
+  pinMode(TRIGGER_PIN, INPUT);
   irrecv.enableIRIn();  // Start up the IR receiver.
   irsend.begin();       // Start up the IR sender.
   // Initialising the UI will init the display too.
@@ -232,7 +237,7 @@ void setupWifi() {
   delay(3000);
   Serial.println("\n Starting");
 
-  pinMode(TRIGGER_PIN, INPUT);
+//  pinMode(TRIGGER_PIN, INPUT);
 
 
   if (wm_nonblocking) wm.setConfigPortalBlocking(false);
@@ -324,13 +329,13 @@ void saveParamCallback() {
 
 void relayOn() {
 
-  digitalWrite(Relay_01, LOW);
+  digitalWrite(Relay_01, HIGH);
   server.send(200, "text/json", String(digitalRead(Relay_01)));
 }
 
 void relayOff() {
 
-  digitalWrite(Relay_01, HIGH);
+  digitalWrite(Relay_01, LOW);
   server.send(200, "text/json", String(digitalRead(Relay_01)));
 }
 
@@ -384,12 +389,18 @@ int displayModeLength = (sizeof(displayInfoMode) / sizeof(Display));
 void loop(void) {
   //  wm.process();
   display.clear();
+  
+  Serial.println("digitalRead(TRIGGER_PIN) " );
+  Serial.println(digitalRead(TRIGGER_PIN));
   if ( digitalRead(TRIGGER_PIN) == LOW) {
+  
+//    //reset settings - for testing
+//        wm.resetSettings();
+//        SPIFFS.format();
+//        ESP.reset();
+//
 
-    //reset settings - for testing
-    //    wm.resetSettings();
-
-    //    setupWifi();
+//      setupWifi();
   }
   displayInfoMode[displayMode]();
   digitalWrite(BUILTIN_LED, HIGH);
@@ -427,7 +438,7 @@ void drawChargingAnimation() {
   
   display.drawXbm(0, 0, 128, 64, battery_bitmap);
   display.display();
-  if (digitalRead(Relay_01) == LOW){
+  if (digitalRead(Relay_01) == HIGH){
     for (int i = 0; i < 65; i++) {
       //  digitalRead(Relay_01)
       width = CHARGE_AREA_START_X + i;
