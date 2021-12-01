@@ -345,7 +345,7 @@ void saveParamCallback() {
   Serial.println("nerveURL " + nerveURL);
 
   timeSinceLastWifiChecked = millis();
-  notifyNerve();
+  //notifyNerve();
 }
 
 int getRelayNumber() {
