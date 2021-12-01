@@ -43,19 +43,36 @@ const uint8_t kTolerancePercentage = kTolerance;  // kTolerance is normally 25%
 
 
 
-const uint16_t kRecvPin = 14;
-#define Relay_01 16        //mesmo que D0
+//const uint16_t kRecvPin = 14;
+#define Relay_00 2        //mesmo que D4 not in use we are using from 1
+#define Relay_01 12 // D6
+#define Relay_02 13  // D7
+#define Relay_03 14  // D5
+#define Relay_04 15  // D8
+#define Relay_05 16  // D0
+
+#define Relay_01 14 // D5
+#define Relay_02 12  // D6
+#define Relay_03 13  // D7
+#define Relay_04 15  // D8
+#define Relay_05 16  // D0
+
+#define NUM_RELAYS  5
+int relayGPIOs[NUM_RELAYS] = {14, 12, 13, 15, 16};
+
+//#define Relay_07 16  //
+//#define Relay_08 16  // D
 
 // GPIO to use to control the IR LED circuit. Recommended: 4 (D2).
-const uint16_t kIrLedPin = 12;
+//const uint16_t kIrLedPin = 12;
 
 // The Serial connection baud rate.
 // NOTE: Make sure you set your Serial Monitor to the same speed.
 const uint32_t kBaudRate = 115200;
 
-const int Led_Red = 2;
-const int Led_Green = 13;
-const int Led_Blue = 15;
+//const int Led_Red = 2;
+//const int Led_Green = 13;
+//const int Led_Blue = 15;
 
 // As this program is a special purpose capture/resender, let's use a larger
 // than expected buffer so we can handle very large IR messages.
@@ -75,9 +92,9 @@ const uint16_t kFrequency = 38000;  // in Hz. e.g. 38kHz.
 
 SH1106Wire display(0x3c, SDA, SCL); // ADDRESS, SDA, SCL  -  SDA and SCL usually populate automatically based on your board's pins_arduino.h
 // The IR transmitter.
-IRsend irsend(kIrLedPin);
+//IRsend irsend(kIrLedPin);
 // The IR receiver.
-IRrecv irrecv(kRecvPin, kCaptureBufferSize, kTimeout, false);
+//IRrecv irrecv(kRecvPin, kCaptureBufferSize, kTimeout, false);
 // Somewhere to store the captured message.
 decode_results results;
 
@@ -107,9 +124,13 @@ void setup(void) {
   Serial.begin(115200);
   Serial.println("We are starting here ");
 
-//  SPIFFS.format();
-  pinMode(Relay_01, OUTPUT);
-  digitalWrite(Relay_01, HIGH);
+  //  SPIFFS.format();
+  // Set all relays to off when the program starts - if set to Normally Open (NO), the relay is off when you set the relay to HIGH
+  for (int i = 1; i <= NUM_RELAYS; i++) {
+    pinMode(relayGPIOs[i - 1], OUTPUT);
+    digitalWrite(relayGPIOs[i - 1], HIGH);
+  }
+
   if (SPIFFS.begin()) {
     Serial.println("mounted file system");
     if (SPIFFS.exists("/nerve_config.json")) {
@@ -123,34 +144,34 @@ void setup(void) {
         std::unique_ptr<char[]> buf(new char[size]);
 
         configFile.readBytes(buf.get(), size);
-        if (size >0){
-        Serial.println("file Data size - " + String(size));
+        if (size > 0) {
+          Serial.println("file Data size - " + String(size));
 
-        //#ifdef ARDUINOJSON_VERSION_MAJOR >= 6
-        DynamicJsonDocument json(1024);
-        auto deserializeError = deserializeJson(json, buf.get());
-        serializeJson(json, Serial);
-        if ( ! deserializeError ) {
-          //#else
-          //        DynamicJsonBuffer jsonBuffer;
-          //        JsonObject& json = jsonBuffer.parseObject(buf.get());
-          //        json.printTo(Serial);
-          //        if (json.success()) {
-          //#endif
+          //#ifdef ARDUINOJSON_VERSION_MAJOR >= 6
+          DynamicJsonDocument json(1024);
+          auto deserializeError = deserializeJson(json, buf.get());
+          serializeJson(json, Serial);
+          if ( ! deserializeError ) {
+            //#else
+            //        DynamicJsonBuffer jsonBuffer;
+            //        JsonObject& json = jsonBuffer.parseObject(buf.get());
+            //        json.printTo(Serial);
+            //        if (json.success()) {
+            //#endif
 
-          // extract the data
-          JsonObject object = json.as<JsonObject>();
-          Serial.println("\nparsed json");
-          const char* host1 = object["nerve_server_host"];
-          const char* port1 = object["nerve_server_port"];
-          const char* license1 = object["license_key"];
-          //          strcpy(nerveServerHost, object["nerve_server_host"]);
-          //          strcpy(nerveServerPort, object["nerve_server_port"]);
-          //          strcpy(licenseKey, object["license_key"]);
-          nerveURL =  "http://" + String(host1) + ":" + String(port1) + "/neuron/v3/node?licensekey=" + String(license1) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
-          nerveHostNPort = String(host1) + ":" + String(port1);
-          Serial.println("file nerveURL " + nerveURL);
-        }
+            // extract the data
+            JsonObject object = json.as<JsonObject>();
+            Serial.println("\nparsed json");
+            const char* host1 = object["nerve_server_host"];
+            const char* port1 = object["nerve_server_port"];
+            const char* license1 = object["license_key"];
+            //          strcpy(nerveServerHost, object["nerve_server_host"]);
+            //          strcpy(nerveServerPort, object["nerve_server_port"]);
+            //          strcpy(licenseKey, object["license_key"]);
+            nerveURL =  "http://" + String(host1) + ":" + String(port1) + "/neuron/v3/node?licensekey=" + String(license1) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
+            nerveHostNPort = String(host1) + ":" + String(port1);
+            Serial.println("file nerveURL " + nerveURL);
+          }
         } else {
           Serial.println("failed to load json config");
         }
@@ -170,12 +191,12 @@ void setup(void) {
     }
 
   }
-  pinMode(Led_Red, OUTPUT);
-  pinMode(Led_Green, OUTPUT);
-  pinMode(Led_Blue, OUTPUT);
-  pinMode(TRIGGER_PIN, INPUT);
-  irrecv.enableIRIn();  // Start up the IR receiver.
-  irsend.begin();       // Start up the IR sender.
+  //  pinMode(Led_Red, OUTPUT);
+  //  pinMode(Led_Green, OUTPUT);
+  //  pinMode(Led_Blue, OUTPUT);
+  //  pinMode(TRIGGER_PIN, INPUT);
+  //  irrecv.enableIRIn();  // Start up the IR receiver.
+  //  irsend.begin();       // Start up the IR sender.
   // Initialising the UI will init the display too.
   display.init();
 
@@ -218,7 +239,7 @@ void setup(void) {
 
 
   server.begin();
-  setGreen();
+  //  setGreen();
   Serial.println("HTTP Server Started");
 }
 
@@ -237,7 +258,7 @@ void setupWifi() {
   delay(3000);
   Serial.println("\n Starting");
 
-//  pinMode(TRIGGER_PIN, INPUT);
+  //  pinMode(TRIGGER_PIN, INPUT);
 
 
   if (wm_nonblocking) wm.setConfigPortalBlocking(false);
@@ -327,21 +348,65 @@ void saveParamCallback() {
   notifyNerve();
 }
 
-void relayOn() {
+int getRelayNumber() {
+  int relayNumber = 0;
+  if (server.arg("switch") != "") {
+    relayNumber = server.arg("switch").toInt();
+  }
+  return relayNumber;
+}
 
-  digitalWrite(Relay_01, HIGH);
-  server.send(200, "text/json", String(digitalRead(Relay_01)));
+void relayOn() {
+  int relayNumber = getRelayNumber();
+  if (relayNumber > 6 || relayNumber < 1) {
+    server.send(400, "text/json", "invalid switch number");
+    return;
+  }
+
+
+  digitalWrite(relayGPIOs[relayNumber - 1], HIGH);
+
+  StaticJsonDocument<200> doc;
+  doc["switch"] = relayNumber;
+  doc["relay"] = relayGPIOs[relayNumber - 1];
+  doc["status"] = String(digitalRead(relayGPIOs[relayNumber - 1]));
+
+  String resp;
+  serializeJson(doc, resp);
+  server.send(200, "text/jsob", resp);
 }
 
 void relayOff() {
+  int relayNumber = getRelayNumber();
+  if (relayNumber > 6 || relayNumber < 1) {
+    server.send(400, "text/json", "invalid switch number");
+    return;
+  }
 
-  digitalWrite(Relay_01, LOW);
-  server.send(200, "text/json", String(digitalRead(Relay_01)));
+  digitalWrite(relayGPIOs[relayNumber - 1], LOW);
+  StaticJsonDocument<200> doc;
+  doc["switch"] = relayNumber;
+  doc["relay"] = relayGPIOs[relayNumber - 1];
+  doc["status"] = String(digitalRead(relayGPIOs[relayNumber - 1]));
+
+  String resp;
+  serializeJson(doc, resp);
+  server.send(200, "text/jsob", resp);
 }
 
 void relayStatus() {
+  StaticJsonDocument<200> doc;
+  //  JsonObject &root = jsonBuffer.createObject();x
+  for (int i = 1; i <= NUM_RELAYS; i++) {
+    //    pinMode(relayGPIOs[i - 1], OUTPUT);
+    doc["switch_" + String(i)] = String(digitalRead(relayGPIOs[i - 1]));
 
-  server.send(200, "text/json", String(digitalRead(Relay_01)));
+  }
+
+  String resp;
+  serializeJson(doc, resp);
+  server.send(200, "text/jsob", resp);
+
 }
 
 void resetConfig() {
@@ -355,21 +420,21 @@ void connectToWifi() {
   counter = 20;
   while (WiFi.status() != WL_CONNECTED) {
     drawProgressBarForWifiConnection();
-    for (int val = 255; val > 0; val--) {
-      analogWrite (Led_Red, val);
-      analogWrite (Led_Blue, 255 - val);
-      analogWrite (Led_Green, 128 - val);
-      delay (5);
-      val = val - 5;
-    }
+    //    for (int val = 255; val > 0; val--) {
+    //      analogWrite (Led_Red, val);
+    //      analogWrite (Led_Blue, 255 - val);
+    //      analogWrite (Led_Green, 128 - val);
+    //      delay (5);
+    //      val = val - 5;
+    //    }
 
-    for (int val = 0; val < 255; val++) {
-      analogWrite (Led_Red, val);
-      analogWrite (Led_Blue, 255 - val);
-      analogWrite (Led_Green, 128 - val);
-      val = val + 5;
-      delay (5);
-    }
+    //    for (int val = 0; val < 255; val++) {
+    //      analogWrite (Led_Red, val);
+    //      analogWrite (Led_Blue, 255 - val);
+    //      analogWrite (Led_Green, 128 - val);
+    //      val = val + 5;
+    //      delay (5);
+    //    }
     if (count > 10 && count % 2 == 0) {
       displayWifiDetails();
       delay(WIFI_DISPLAY_DURATION);
@@ -389,24 +454,24 @@ int displayModeLength = (sizeof(displayInfoMode) / sizeof(Display));
 void loop(void) {
   //  wm.process();
   display.clear();
-  
+
   Serial.println("digitalRead(TRIGGER_PIN) " );
   Serial.println(digitalRead(TRIGGER_PIN));
   if ( digitalRead(TRIGGER_PIN) == LOW) {
-  
-//    //reset settings - for testing
-//        wm.resetSettings();
-//        SPIFFS.format();
-//        ESP.reset();
-//
 
-//      setupWifi();
+    //    //reset settings - for testing
+    //        wm.resetSettings();
+    //        SPIFFS.format();
+    //        ESP.reset();
+    //
+
+    //      setupWifi();
   }
   displayInfoMode[displayMode]();
   digitalWrite(BUILTIN_LED, HIGH);
-  setGreen();
+  //  setGreen();
   server.handleClient();
-  setGreen();
+  //  setGreen();
   digitalWrite(BUILTIN_LED, LOW);
   if (millis() - timeSinceLastModeSwitch > INFO_DISPLAY_DURATION) {
     displayMode = (displayMode + 1)  % displayModeLength;
@@ -435,10 +500,18 @@ void drawChargingAnimation() {
   uint8_t width;
 
   display.clear();
-  
+
   display.drawXbm(0, 0, 128, 64, battery_bitmap);
   display.display();
-  if (digitalRead(Relay_01) == HIGH){
+  String chargingState = "";
+  for (int i = 1; i <= NUM_RELAYS; i++) {
+    //    pinMode(relayGPIOs[i - 1], OUTPUT);
+    if (digitalRead(relayGPIOs[i - 1]) == HIGH) {
+    chargingState = chargingState + ", " + String(i);
+    }
+
+  }
+  if (1 == 1) {
     for (int i = 0; i < 65; i++) {
       //  digitalRead(Relay_01)
       width = CHARGE_AREA_START_X + i;
@@ -447,7 +520,7 @@ void drawChargingAnimation() {
       display.fillRect(CHARGE_AREA_START_X, CHARGE_AREA_START_Y, (width), CHARGE_AREA_HEIGHT);
       //   display.drawBox(CHARGE_AREA_START_X, CHARGE_AREA_START_Y, width, CHARGE_AREA_HEIGHT);
       delay(30);
-      display.drawString(40, 50, "Charging");
+      display.drawString(10, 50, "Charging - " + chargingState);
       display.display();
 
     }
@@ -516,10 +589,10 @@ void drawProgressBarForWifiConnection() {
 void handleTest() {
 
   Serial.println("Sat Ok");
-  irsend.sendNEC(0xA25DFA05, 32);
+  //  irsend.sendNEC(0xA25DFA05, 32);
 
   delay(1000);
-  irsend.sendSAMSUNG(3772802968, 32);
+  //  irsend.sendSAMSUNG(3772802968, 32);
   //  irsend.sendSAMSUNG(0xE0E06798, 32);
   server.send(200, "text/plain", "Sat OK");
 
@@ -531,7 +604,7 @@ void handleRun() {
   display.setFont(ArialMT_Plain_24);
   display.drawString(0, 20, "Playing");
   display.display();
-  setBlue();
+  //  setBlue();
   if (server.hasArg("plain") == false) { //Check if body received
 
     server.send(200, "text/plain", "Body not received");
@@ -559,8 +632,9 @@ void handleRun() {
   Serial.print("\ncodeStr - ");
 
   Serial.print("\ncode - " );
+  bool success = false;
 
-  bool success = irsend.send(protocol, code, size);
+  //  bool success = irsend.send(protocol, code, size);
 
 
   if (!success) {
@@ -569,7 +643,7 @@ void handleRun() {
     server.send(200, "text/json", "sent remote command");
   }
 
-  setGreen();
+  //  setGreen();
   display.clear();
 }
 void handleRecord() {
@@ -599,7 +673,7 @@ void handleRecord() {
   display.drawString(0, 48, button);
 
   display.display();
-  setRed();
+
   decode_type_t protocol;
   String protocolName;
   String value ;
@@ -607,7 +681,7 @@ void handleRecord() {
   uint64_t code;
   size = 0;
   while (size < 1) {
-    getIRSensorData(&protocol, &protocolName, &value, &code, &size);
+    //    getIRSensorData(&protocol, &protocolName, &value, &code, &size);
     yield();
   }
   Serial.print("\nvalue - "  + value);
@@ -627,7 +701,7 @@ void handleRecord() {
   String resp;
   serializeJson(doc, resp);
   server.send(200, "text/jsob", resp);
-  setGreen();
+  //  setGreen();
   //  irsend.send(protocol, value, size);
 
 }
@@ -720,46 +794,46 @@ void handleNotFound() {
 
 
 
-void getIRSensorData(decode_type_t *protocol, String *protocolName, String *value, uint64_t *code, uint16_t *size ) {
-
-  //  Serial.print("we are in getIRSensorData \n" );
-  while (irrecv.decode(&results)) {
-    Serial.print("\nwe are in getIRSensorData \n" );
-    *code = results.value;
-    String temp = uint64ToString(results.value, HEX);
-    *value = temp;
-    *size =  results.bits;
-    decode_type_t protocolTemp = results.decode_type;
-    *protocol = protocolTemp;
-    *protocolName = typeToString(protocolTemp).c_str();
-    serialPrintUint64(results.value, HEX);
-    //    irsend.send(protocol, results.value, size);
-    String tempHex = resultToHexidecimal(&results);
-    Serial.print("\nresultToHexidecimal " +  tempHex + "\n") ;
-    //    resultToHexidecimal(results)
-
-    irrecv.resume();
-  }
-
-}
-
-void setRed () {
-  //  (255,0,0)
-  analogWrite(Led_Red, 255);
-  analogWrite(Led_Green, 0);
-  analogWrite(Led_Blue, 0);
-}
-
-void setGreen() {
-  //  (0,128,0) forest green
-  analogWrite(Led_Red, 0);
-  analogWrite(Led_Green, 255);
-  analogWrite(Led_Blue, 0);
-}
-
-void setBlue() {
-  //  (0,0,255) blue
-  analogWrite(Led_Red, 0);
-  analogWrite(Led_Green, 0);
-  analogWrite(Led_Blue, 255);
-}
+//void getIRSensorData(decode_type_t *protocol, String *protocolName, String *value, uint64_t *code, uint16_t *size ) {
+//
+//  //  Serial.print("we are in getIRSensorData \n" );
+//  while (irrecv.decode(&results)) {
+//    Serial.print("\nwe are in getIRSensorData \n" );
+//    *code = results.value;
+//    String temp = uint64ToString(results.value, HEX);
+//    *value = temp;
+//    *size =  results.bits;
+//    decode_type_t protocolTemp = results.decode_type;
+//    *protocol = protocolTemp;
+//    *protocolName = typeToString(protocolTemp).c_str();
+//    serialPrintUint64(results.value, HEX);
+//    //    irsend.send(protocol, results.value, size);
+//    String tempHex = resultToHexidecimal(&results);
+//    Serial.print("\nresultToHexidecimal " +  tempHex + "\n") ;
+//    //    resultToHexidecimal(results)
+//
+//    irrecv.resume();
+//  }
+//
+//}
+//
+//void setRed () {
+//  //  (255,0,0)
+//  analogWrite(Led_Red, 255);
+//  analogWrite(Led_Green, 0);
+//  analogWrite(Led_Blue, 0);
+//}
+//
+//void setGreen() {
+//  //  (0,128,0) forest green
+//  analogWrite(Led_Red, 0);
+//  analogWrite(Led_Green, 255);
+//  analogWrite(Led_Blue, 0);
+//}
+//
+//void setBlue() {
+//  //  (0,0,255) blue
+//  analogWrite(Led_Red, 0);
+//  analogWrite(Led_Green, 0);
+//  analogWrite(Led_Blue, 255);
+//}
