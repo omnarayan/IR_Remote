@@ -19,8 +19,10 @@ once its connected, it ll add this device as node to nevre
 **How to controll mobile charging**
 
 make GET call 
-- To off - `node_ip (please see the screen) :8080/relay/off `
-- To On - `node_ip (please see the screen) :8080/relay/off `
+Current one support 3 switch
+- To off - `node_ip (please see the screen) :8080/relay/off?switch=SwitchNumber_This_case_it_ll_be_1_or_2_or_3`
+- To On - `node_ip (please see the screen) :8080/relay/on?switch=SwitchNumber_This_case_it_ll_be_1_or_2_or_3`
+- To get status - `node_ip (please see the screen) :8080/status`
 
 
 **How to reset -** Make GET call to ` node_ip (please see the screen) :8080/reset` and wait for 10 second then diconnect the power and reconnect 
