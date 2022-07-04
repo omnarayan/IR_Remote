@@ -3,6 +3,7 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPClient.h>
+#include <ArduinoOTA.h>
 
 #include <Arduino.h>
 #include <IRsend.h>
@@ -57,6 +58,7 @@ const uint8_t kTolerancePercentage = kTolerance;  // kTolerance is normally 25%
 #define Relay_04 15  // D8
 #define Relay_05 16  // D0
 
+
 #define NUM_RELAYS  3
 //int relayGPIOs[NUM_RELAYS] = {14, 12, 13, 15, 16};
 int relayGPIOs[NUM_RELAYS] = {14, 12, 13};
@@ -109,6 +111,7 @@ char* nerveServerHost = "";
 char* nerveServerPort = "";
 char* licenseKey = "";
 bool isConnectedToNerve = false;
+String firmVersion = "1.0.1";
 
 ESP8266WebServer server(PORT);
 
@@ -127,7 +130,7 @@ void setup(void) {
   Serial.begin(115200);
   Serial.println("We are starting here ");
 
-//    SPIFFS.format();
+  //    SPIFFS.format();
   // Set all relays to off when the program starts - if set to Normally Open (NO), the relay is off when you set the relay to HIGH
   for (int i = 1; i <= NUM_RELAYS; i++) {
     pinMode(relayGPIOs[i - 1], OUTPUT);
@@ -203,13 +206,13 @@ void setup(void) {
   //  irsend.begin();       // Start up the IR sender.
   // Initialising the UI will init the display too.
   display.init();
-  
+
   Serial.println("initiating dispaly");
 
   display.flipScreenVertically();
   display.setFont(ArialMT_Plain_10);
 
-//  digitalWrite(BUILTIN_LED, HIGH);
+  //  digitalWrite(BUILTIN_LED, HIGH);
   setupWifi();
   //  WiFi.begin(SSID, password);
   Serial.println("Wifi setup done");
@@ -228,7 +231,62 @@ void setup(void) {
     Serial.println("MDNS Responder Started");
   }
   //  nerveURL =  "http://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
- 
+  // over the air started
+  ArduinoOTA.setPort(8266);
+  ArduinoOTA.setPassword("!z!ng@");
+  ArduinoOTA.onStart([]() {
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 0, "OTA Started");
+    display.display();
+    Serial.println("Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+    
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 0, "OTA Completed");
+    display.display();
+    Serial.println("Start");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(0, 0, "OTA Error");
+    display.display();
+    Serial.println("Start");
+    
+    if (error == OTA_AUTH_ERROR) {
+      Serial.println("Auth Failed");
+      display.drawString(0, 14, "Auth Failed");
+    }
+    else if (error == OTA_BEGIN_ERROR) {
+      Serial.println("Begin Failed");
+      display.drawString(0, 14, "Begin Failed");
+    }
+    else if (error == OTA_CONNECT_ERROR) {
+      Serial.println("Connect Failed");
+      display.drawString(0, 14, "Connect Failed");
+    }
+    else if (error == OTA_RECEIVE_ERROR) {
+      Serial.println("Receive Failed");
+      display.drawString(0, 14, "Receive Failed");
+    }
+    else if (error == OTA_END_ERROR) {
+      Serial.println("End Failed");
+      display.drawString(0, 14, "End Failed");
+    }
+  });
+  ArduinoOTA.begin();
+
   server.on("/", heartBeat);
   server.on("/test", handleTest);
   server.on("/notifynerve", notifyNerve);
@@ -261,9 +319,9 @@ void setupWifi() {
 
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-//  delay(3000);
+  //  delay(3000);
   Serial.println("\n Starting setting wifi");
-  
+
   wm.setSaveConfigCallback(saveConfigCallback);
 
   //  pinMode(TRIGGER_PIN, INPUT);
@@ -420,9 +478,9 @@ void relayStatus() {
 void resetConfig() {
   server.send(200, "text/json", "reset");
   wm.resetSettings();
-   wm.resetSettings();
-            SPIFFS.format();
-            ESP.reset();
+  wm.resetSettings();
+  SPIFFS.format();
+  ESP.reset();
 }
 
 
@@ -448,7 +506,7 @@ void connectToWifi() {
     //    }
     if (count > 10 && count % 2 == 0) {
       displayWifiDetails();
-//      delay(WIFI_DISPLAY_DURATION);
+      //      delay(WIFI_DISPLAY_DURATION);
     }
 
     count ++ ;
@@ -463,10 +521,10 @@ Display displayInfoMode[] = { displayInfo, drawIcon, drawChargingAnimation};
 int displayModeLength = (sizeof(displayInfoMode) / sizeof(Display));
 
 void loop(void) {
-  
+
   //  wm.process();
   display.clear();
-
+  ArduinoOTA.handle();
   if ( digitalRead(TRIGGER_PIN) == LOW) {
 
     //    //reset settings - for testing
@@ -478,13 +536,13 @@ void loop(void) {
     //      setupWifi();
   }
   displayInfoMode[displayMode]();
-//  digitalWrite(BUILTIN_LED, HIGH);
+  //  digitalWrite(BUILTIN_LED, HIGH);
   //  setGreen();
-   Serial.println("We are in loop, handling server/client connection ");
+  Serial.println("We are in loop, handling server/client connection ");
   server.handleClient();
   Serial.println("We are in loop, handling server/client connection done ");
   //  setGreen();
-//  digitalWrite(BUILTIN_LED, LOW);
+  //  digitalWrite(BUILTIN_LED, LOW);
   if (millis() - timeSinceLastModeSwitch > INFO_DISPLAY_DURATION) {
     displayMode = (displayMode + 1)  % displayModeLength;
     timeSinceLastModeSwitch = millis();
@@ -492,7 +550,7 @@ void loop(void) {
   if (millis() - timeSinceLastModeSwitch > WIFI_CHECK_DURATION) {
     //    connectToWifi();
   }
-  if (millis() - timeSinceLastModeSwitch > NERVE_CHECK_DURATION) {
+  if (millis() - timeSinceLastNerveCheck > NERVE_CHECK_DURATION) {
 
     notifyNerve();
     timeSinceLastNerveCheck = millis();
@@ -519,7 +577,7 @@ void drawChargingAnimation() {
   for (int i = 1; i <= NUM_RELAYS; i++) {
     //    pinMode(relayGPIOs[i - 1], OUTPUT);
     if (digitalRead(relayGPIOs[i - 1]) == HIGH) {
-    chargingState = chargingState + ", " + String(i);
+      chargingState = chargingState + ", " + String(i);
     }
 
   }
@@ -731,11 +789,12 @@ void heartBeat() {
   doc["relay"] = String(digitalRead(Relay_01));
   doc["isConnectedToNerve"] = isConnectedToNerve;
   doc["freeHeap"] = ESP.getFreeHeap();
-  isConnectedToNerve = true;
-  String resp;
-  serializeJson(doc, resp);
-  server.send(200, "text/json", resp);
-  timeSinceLastNerveCheck = millis();
+  doc["firmVersion"] = firmVersion;
+      isConnectedToNerve = true;
+      String resp;
+      serializeJson(doc, resp);
+      server.send(200, "text/json", resp);
+      timeSinceLastNerveCheck = millis();
 }
 
 
@@ -777,14 +836,14 @@ void notifyNerve() {
       //      display.drawString(0, 20, "unable to connet to nerve");
     }
     display.display();
-//    wifiClient.abort();
+    //    wifiClient.abort();
     http.end();
   } else {
-    
+
     server.send(404, "text/plain", "unable to connet to nerve");
     //     connectToWifi();
   }
-  
+
   //  if (!isConnectedToNerve) {
   //
   //    notifyNerve();

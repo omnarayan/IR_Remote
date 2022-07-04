@@ -1,6 +1,6 @@
 
 
-#define VERSION "0.1.2"
+#define VERSION "0.1.3"
 #define HARDWARE "esp8266"
 #define PORT 8080
 #define SSID "Izinga-dhcp"
@@ -11,6 +11,6 @@
 #define INFO_DISPLAY_DURATION 5000
 #define WIFI_DISPLAY_DURATION 10000
 #define WIFI_CHECK_DURATION 300000
-#define NERVE_CHECK_DURATION 12000
+#define NERVE_CHECK_DURATION 50000
 #define AP_NAME "robustest_esp8266"
 #define AP_PASSWORD "!z!ng@$0fT"
