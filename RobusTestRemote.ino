@@ -174,7 +174,7 @@ void setup(void) {
             //          strcpy(nerveServerHost, object["nerve_server_host"]);
             //          strcpy(nerveServerPort, object["nerve_server_port"]);
             //          strcpy(licenseKey, object["license_key"]);
-            nerveURL =  "http://" + String(host1) + ":" + String(port1) + "/neuron/v3/node?licensekey=" + String(license1) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
+            nerveURL =  "https://" + String(host1) + ":" + String(port1) + "/neuron/v3/node?licensekey=" + String(license1) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
             nerveHostNPort = String(host1) + ":" + String(port1);
             Serial.println("file nerveURL " + nerveURL);
           }
@@ -230,7 +230,7 @@ void setup(void) {
   if (MDNS.begin("esp8266")) {
     Serial.println("MDNS Responder Started");
   }
-  //  nerveURL =  "http://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
+  //  nerveURL =  "https://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
   // over the air started
   ArduinoOTA.setPort(8266);
   ArduinoOTA.setPassword("!z!ng@");
@@ -366,7 +366,7 @@ String getParam(String name) {
 void saveParamCallback() {
   Serial.println("[CALLBACK] saveParamCallback fired");
   Serial.println("PARAM customfieldid = " + getParam("nerveServerHost"));
-  nerveURL =  "http://" + getParam("nerveServerHost") + ":" + getParam("nerveServerPort") + "/neuron/v3/node?licensekey=" + getParam("licenseKey") + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
+  nerveURL =  "https://" + getParam("nerveServerHost") + ":" + getParam("nerveServerPort") + "/neuron/v3/node?licensekey=" + getParam("licenseKey") + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
   nerveHostNPort = getParam("nerveServerHost") + ":" + getParam("nerveServerPort") ;
   Serial.println("nerveURL " + nerveURL);
   //  strcpy(nerveServerHost, nerve_server_host.getValue());
@@ -800,7 +800,7 @@ void heartBeat() {
 
 void notifyNerve() {
 
-  //  nerveURL =  "http://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
+  //  nerveURL =  "https://" + String(nerveServerHost) + ":" + String(nerveServerPort) + "/neuron/v3/node?licensekey=" + String(licenseKey) + "&machineID=" + WiFi.macAddress() + "&name=" + WiFi.macAddress() + "&relay=" + String(digitalRead(Relay_01));
 
   Serial.println("connecting to nerve url  - "  + nerveURL );
   display.clear();
